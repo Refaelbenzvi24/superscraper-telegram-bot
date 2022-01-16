@@ -12,7 +12,7 @@ from util import translateInterval, setInterval
 bot = telebot.TeleBot(API_KEY)
 
 
-def serverRestarted():
+def startServer():
 	usersConfigFiles = [f for f in listdir('configs')]
 	
 	for file in usersConfigFiles:
@@ -91,9 +91,6 @@ def compareSizes(l1, l2, roundNumbers=False):
 		return sizes
 	else:
 		return ''
-
-
-serverRestarted()
 
 
 @bot.message_handler(commands=['start'])
@@ -221,4 +218,14 @@ def restart(message):
 		bot.send_message(message.chat.id, 'חסרים פרטים, יש לרשום start ע"מ להתחיל')
 
 
-bot.polling()
+class BackgroundTasks(threading.Thread):
+	def run(self, *args, **kwargs):
+		while True:
+			print('started listening to bot')
+			bot.infinity_polling(timeout=10, long_polling_timeout=5)
+			time.sleep(1)
+
+
+startServer()
+t = BackgroundTasks()
+t.start()
