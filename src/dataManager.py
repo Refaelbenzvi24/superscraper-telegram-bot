@@ -1,5 +1,4 @@
 import json
-from util import translateInterval
 
 
 def saveData(data, userId):
@@ -11,32 +10,61 @@ def saveData(data, userId):
 	for item in data:
 		item = item[0]
 		duplicated = False
-		duplicatedItem = None
-		
 		_index = 0
-		if len(savedData) > 0:
+		
+		if len(savedData) > 0 and len(item['sizes']) > 0:
+			
 			for _item in savedData:
 				if _item['id'] == item['id']:
 					duplicated = True
-					duplicatedItem = _item
-				
+					
+					item['sizes'] = includeUserSizes(item['sizes'], userId)
+					_item['sizes'] = includeUserSizes(_item['sizes'], userId)
 				if _index == len(data) - 1:
 					if duplicated:
-						newSizes = checkNewSizes(item['sizes'], duplicatedItem['sizes'])
+						newSizes = checkNewSizes(item['sizes'], _item['sizes'])
 						
 						if newSizes:
 							item['newData'] = True
+							print(item['sizes'])
+							print(_item['sizes'])
 							localData.append(item)
 						else:
 							item['newData'] = False
 							localData.append(item)
 				_index += 1
-		if not duplicated:
-			item['newData'] = True
-			localData.append(item)
+			if not duplicated and len(item['sizes']) > 0:
+				item['sizes'] = includeUserSizes(item['sizes'], userId)
+				if len(item['sizes']) > 0:
+					item['newData'] = True
+					localData.append(item)
 	
 	saveUserData(localData, userId)
 	increaseRequestCounter(1, userId)
+
+
+def includeUserSizes(sizesToTransform, userId):
+	config = getUserConfig(userId)
+	userSizes = config['sizes']
+	roundNumbers = config['roundSizes']
+	
+	if len(sizesToTransform) > 0 and len(userSizes) > 0:
+		sizes = []
+		
+		def roundNum(n):
+			return int(n)
+		
+		if roundNumbers:
+			map(roundNum, sizesToTransform)
+			map(roundNum, userSizes)
+		
+		for size in userSizes:
+			if size in sizesToTransform:
+				sizes.append(size)
+		
+		return sizes
+	else:
+		return []
 
 
 def checkNewSizes(l1, l2):

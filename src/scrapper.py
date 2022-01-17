@@ -1,5 +1,7 @@
 import time
 
+from outputControll import output
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementClickInterceptedException
@@ -23,7 +25,7 @@ def scrape(userId):
 	time.sleep(2)
 	driver.quit()
 	
-	print('scrape ended successfully for user: ' + str(userId))
+	output('scrape ended successfully for user: ' + str(userId))
 	return
 
 

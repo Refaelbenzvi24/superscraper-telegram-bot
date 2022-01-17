@@ -1,7 +1,9 @@
 import telebot
 import threading
 import time
+
 from config import API_KEY
+from outputControll import output
 
 from os import listdir
 from scrapper import scrape
@@ -26,12 +28,12 @@ def startServer():
 
 
 def newScrapeThread(userId):
-	print('thread for ' + userId + ' opened')
+	output('thread for ' + userId + ' opened')
 	t = threading.Thread(name=userId, target=scrape(userId))
 	t.start()
 	time.sleep(1)
 	t.join()
-	print('thread for ' + userId + ' closed')
+	output('thread for ' + userId + ' closed')
 	return
 
 
@@ -54,7 +56,6 @@ def sendUserData(userId):
 	
 	for item in data:
 		if item['newData'] and config['sizes'][0] != 'הכל':
-			# sizes = compareSizes(item['sizes'], config['sizes'], config['roundNumbers'])
 			sizes = compareSizes(item['sizes'], config['sizes'], config['roundSizes'])
 			
 			if sizes != '':
@@ -221,11 +222,11 @@ def restart(message):
 class BackgroundTasks(threading.Thread):
 	def run(self, *args, **kwargs):
 		while True:
-			print('started listening to bot')
-			bot.infinity_polling(timeout=10, long_polling_timeout=5)
+			output('started listening to bot')
+			bot.infinity_polling(timeout=60, long_polling_timeout=5)
 			time.sleep(1)
 
 
-startServer()
 t = BackgroundTasks()
 t.start()
+startServer()

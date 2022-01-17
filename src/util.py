@@ -22,17 +22,12 @@ def translateInterval(intervalString):
 			for item in dictionary[key]:
 				if item in str(intervalString):
 					interval = re.split('(\d+)', intervalString)
-					print(interval)
-					print(int(key))
 					if interval[0].isnumeric():
 						intervalNumber = int(interval[0]) * int(key) * 60
 					elif interval[1].isnumeric():
 						intervalNumber = int(interval[1]) * int(key) * 60
 					elif interval[2].isnumeric():
 						intervalNumber = int(interval[2]) * int(key) * 60
-	print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-	print(intervalNumber)
-	print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 	return intervalNumber
 
 
