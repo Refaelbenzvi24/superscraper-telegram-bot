@@ -10,34 +10,32 @@ def saveData(data, userId):
 	for item in data:
 		item = item[0]
 		duplicated = False
-		_index = 0
 		
-		if len(savedData) > 0 and len(item['sizes']) > 0:
-			
+		if len(item['sizes']) > 0:
 			for _item in savedData:
+				_index = 0
 				if _item['id'] == item['id']:
 					duplicated = True
 					
 					item['sizes'] = includeUserSizes(item['sizes'], userId)
 					_item['sizes'] = includeUserSizes(_item['sizes'], userId)
-				if _index == len(data) - 1:
+				
+				if _index == len(savedData) - 1:
 					if duplicated:
 						newSizes = checkNewSizes(item['sizes'], _item['sizes'])
 						
 						if newSizes:
 							item['newData'] = True
-							print(item['sizes'])
-							print(_item['sizes'])
 							localData.append(item)
 						else:
 							item['newData'] = False
 							localData.append(item)
 				_index += 1
-			if not duplicated and len(item['sizes']) > 0:
-				item['sizes'] = includeUserSizes(item['sizes'], userId)
-				if len(item['sizes']) > 0:
-					item['newData'] = True
-					localData.append(item)
+		if not duplicated:
+			item['sizes'] = includeUserSizes(item['sizes'], userId)
+			if len(item['sizes']) > 0:
+				item['newData'] = True
+				localData.append(item)
 	
 	saveUserData(localData, userId)
 	increaseRequestCounter(1, userId)
@@ -96,7 +94,7 @@ def createUser(userId):
 		createUserDataFile(userId)
 	except FileExistsError:
 		saveUserConfig(config, userId)
-		saveUserData('', userId)
+		saveUserData([], userId)
 		return
 	saveUserConfig(config, userId)
 
