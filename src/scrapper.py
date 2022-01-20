@@ -5,10 +5,11 @@ from outputControll import output
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementClickInterceptedException
-from dataManager import saveData, getUserConfig
+from dataManager import saveData, getUserConfig, getSearchConfig, getSearchAmountOfRequests
+from config import FIRST_SEARCH_LIMIT, MAX_SEARCH_LIMIT
 
 
-def scrape(userId):
+def scrape(userId, pointer):
 	chrome_options = webdriver.ChromeOptions()
 	chrome_options.add_experimental_option("excludeSwitches", ["ignore-certificate-errors"])
 	chrome_options.add_argument('--disable-gpu')
@@ -17,10 +18,11 @@ def scrape(userId):
 	driver = webdriver.Chrome(chrome_options=chrome_options)
 	driver.get('https://www.terminalx.com/')
 	
-	searchText = getUserConfig(userId)["search"]
+	searchConfig = getSearchConfig(userId, pointer)
+	searchText = searchConfig['search']
 	search(searchText, driver)
-	itemsList = getList(driver)
-	saveData(itemsList, userId)
+	itemsList = getList(driver, userId, pointer)
+	saveData(itemsList, userId, pointer)
 	
 	time.sleep(2)
 	driver.quit()
@@ -41,7 +43,7 @@ def search(searchText, driver):
 	submitSearch.click()
 
 
-def getList(driver):
+def getList(driver, userId, pointer):
 	driver.implicitly_wait(5)
 	
 	itemsList = driver.find_elements(By.CLASS_NAME, 'listing-product_3mjp')
@@ -49,6 +51,13 @@ def getList(driver):
 	scrollingPagination(len(itemsList), driver)
 	
 	itemsList = driver.find_elements(By.CLASS_NAME, 'listing-product_3mjp')
+	
+	if len(itemsList) > FIRST_SEARCH_LIMIT:
+		if int(getSearchAmountOfRequests(userId, pointer)) == 0:
+			return 'exceed limitation'
+	
+	if len(itemsList) > MAX_SEARCH_LIMIT:
+		return 'exceed limitation'
 	
 	items = getItems(itemsList, driver)
 	
@@ -78,8 +87,6 @@ def getItems(items_list, driver):
 
 
 def getItemData(item):
-	itemArray = []
-	
 	itemObject = {}
 	
 	itemElement = item.find_element(By.CLASS_NAME, 'tx-link_29YD')
@@ -108,6 +115,4 @@ def getItemData(item):
 	
 	itemObject['sizes'] = sizes
 	
-	itemArray.append(itemObject)
-	
-	return itemArray
+	return itemObject

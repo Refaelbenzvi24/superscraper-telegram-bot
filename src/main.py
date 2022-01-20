@@ -1,137 +1,236 @@
-import telebot
-import threading
-import time
+from scrapperManager import startServer
+from botManager import bot
 
-from config import API_KEY
-from outputControll import output
+from dataManager import setUserSearchKey, getSearchConfig, triggerOptionsKey, createUser, getUserConfig, saveUserConfig, \
+	newSearchConfig, initialSearchConfig, deleteAllUserData, newSearchData
+from scrapperManager import startScraper
+from util import translateInterval
+from config import BOT_PASSWORD
 
-from os import listdir
-from scrapper import scrape
-from dataManager import setUserSearch, setUserRoundSizes, setUserInterval, setUserSizes, triggerOptionsKey, \
-	getUserConfig, saveUserConfig, getUserData, createUser
-from util import translateInterval, setInterval
-
-bot = telebot.TeleBot(API_KEY)
-
-
-def startServer():
-	usersConfigFiles = [f for f in listdir('configs')]
-	
-	for file in usersConfigFiles:
-		file = file.split('.')
-		userId = file[0]
-		config = getUserConfig(userId)
-		configOptions = config['options']
-		if not configOptions['setSearchText'] and not configOptions['setSizes'] and not configOptions[
-			'setRoundSizes'] and not configOptions['setInterval']:
-			startScraper(userId, config['interval'])
-
-
-def newScrapeThread(userId):
-	output('thread for ' + userId + ' opened')
-	t = threading.Thread(name=userId, target=scrape(userId))
-	t.start()
-	time.sleep(1)
-	t.join()
-	output('thread for ' + userId + ' closed')
-	return
-
-
-def startScraper(userId, intervalNumber):
-	def scraper(_userId=userId):
-		_config = getUserConfig(_userId)
-		newScrapeThread(_userId)
-		sendUserData(_userId)
-		if _config['stop']:
-			t.cancel()
-	
-	t = setInterval(scraper, intervalNumber)
-	scraper(userId)
-
-
-def sendUserData(userId):
-	data = getUserData(userId)
-	config = getUserConfig(userId)
-	newData = False
-	
-	for item in data:
-		if item['newData'] and config['sizes'][0] != 'הכל':
-			sizes = compareSizes(item['sizes'], config['sizes'], config['roundSizes'])
-			
-			if sizes != '':
-				message = item['title'] + '\n' + 'מידות: ' + str(sizes) + '\n' + 'מחיר: ' + item['price'] + \
-				          '\n' + item['link']
-				bot.send_photo(userId, item['imageUrl'], message)
-				newData = True
-			elif config['requests'] == 0:
-				bot.send_message(userId, 'לא נמצאו כרגע תוצאות למידות שביקשת, אנחנו נמשיך לחפש')
-		
-		elif item['newData'] and config['sizes'][0] == 'הכל':
-			message = item['title'] + '\n' + 'מידות: ' + " ".join(item["sizes"]) + '\n' + 'מידות: ' + \
-			          '\n' + 'מחיר: ' + item['price'] + '\n' + item['link']
-			bot.send_photo(userId, item['imageUrl'], message)
-	if newData:
-		bot.send_message(userId, 'זה מה שמצאנו כרגע לחיפוש שהזנת, במידה ויהיו שינויים נעדכן!')
-
-
-def compareSizes(l1, l2, roundNumbers=False):
-	if len(l1) > 0 and len(l2) > 0:
-		sizes = ''
-		
-		def roundNum(n):
-			return int(n)
-		
-		if roundNumbers:
-			map(roundNum, l1)
-			map(roundNum, l2)
-		
-		for size in l2:
-			if size in l1:
-				sizes += ' ' + size + ' '
-		
-		return sizes
-	else:
-		return ''
+commandsList = '/help - הצגת כל הפקודות' \
+               '\n /start - איפוס משתמש' \
+               '\n /newSearch - הגדרת והתחלת חיפוש חדש' \
+               '\n /resetSearch - איפוס הגדרות החיפוש הנוכחי והגדרה מחדש' \
+               '\n /select - בחירת חיפוש לעריכה' \
+               '\n /showAll - הצגת כל החיפושים' \
+               '\n /stop - הפסקת החיפוש הנוחכי' \
+               '\n /stopAll - הפסקת כל החיפושים' \
+               '\n /delete - מחיקת החיפוש הנוכחי' \
+               '\n /deleteAll - מחיקת כל החיפושים' \
+               '\n /deleteUser - מחיקת המשתמש וכל הנתונים שקשורים אליו'
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
 	createUser(message.chat.id)
-	bot.send_message(message.chat.id, '/help - הצגת כל הפקודות')
+	bot.send_message(message.chat.id, 'היי, מה תרצה שיהיה שם המשתמש שלך?')
+
+
+def setUsername(message):
+	username = getUserConfig(message.chat.id)['username']
+	
+	if username == "":
+		return True
+	else:
+		return False
+
+
+@bot.message_handler(func=setUsername)
+def setUsername(message):
+	config = getUserConfig(message.chat.id)
+	config['username'] = message.text
+	saveUserConfig(config, message.chat.id)
+	bot.send_message(message.chat.id, 'סיסמא והתחלנו!')
+
+
+def authenticate(message):
+	authenticated = getUserConfig(message.chat.id)['authenticated']
+	
+	if not authenticated:
+		return True
+	else:
+		return False
+
+
+@bot.message_handler(func=authenticate)
+def authenticate(message):
+	config = getUserConfig(message.chat.id)
+	password = message.text
+	
+	if config['passwordCounter'] < 10:
+		if str(password) == str(BOT_PASSWORD):
+			config['authenticated'] = True
+			config['passwordCounter'] = 0
+			saveUserConfig(config, message.chat.id)
+			bot.send_message(message.chat.id, 'התחברת בהצלחה!')
+			bot.send_message(message.chat.id, commandsList)
+		else:
+			config['passwordCounter'] += 1
+			saveUserConfig(config, message.chat.id)
+			bot.send_message(message.chat.id, 'סיסמא שגוייה')
+	else:
+		bot.send_message(message.chat.id, 'הגעת למספר הנסיונות המירבי')
+
+
+@bot.message_handler(commands=['help'])
+def helpUser(message):
+	bot.send_message(message.chat.id, commandsList)
+
+
+@bot.message_handler(commands=['newSearch'])
+def newSearch(message):
+	newSearchConfig(message.chat.id)
+	newSearchData(message.chat.id)
 	bot.send_message(message.chat.id, 'היי, מה תרצה לחפש?')
+
+
+@bot.message_handler(commands=['resetSearch'])
+def resetSearch(message):
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	config['searchConfigs'].pop(pointer)
+	config['searchConfigs'].insert(pointer, initialSearchConfig)
+	saveUserConfig(config, message.chat.id)
+	bot.send_message(message.chat.id, 'היי, מה תרצה לחפש?')
+
+
+@bot.message_handler(commands=['select'])
+def select(message):
+	config = getUserConfig(message.chat.id)
+	config['select'] = True
+	saveUserConfig(config, message.chat.id)
+	bot.send_message(message.chat.id, 'אם תרצה להציג את כל האפוציות הקלד /showAll')
+	bot.send_message(message.chat.id, 'איזה חיפוש תרצה לערוך?')
+
+
+def selectCommand(message):
+	config = getUserConfig(message.chat.id)
+	
+	return config['select']
+
+
+@bot.message_handler(func=selectCommand)
+def select(message):
+	config = getUserConfig(message.chat.id)
+	selected = message.text
+	
+	if selected.isnumric() and len(config['searchConfigs']) > selected:
+		selected = int(message.text) - 1
+		config['pointer'] = selected
+		saveUserConfig(config, message.chat.id)
+		bot.send_message(message.chat.id, 'הפעולה בוצע בהצלחה!')
+	else:
+		bot.d_message(message.chat.id, 'המספר שהכנסת לא תקין')
+
+
+@bot.message_handler(commands=['showAll'])
+def showAll(message):
+	config = getUserConfig(message.chat.id)
+	
+	searchConfigsMessage = ''
+	
+	index = 1
+	for searchConfig in config['searchConfigs']:
+		_message = ''
+		
+		_message += 'מילות חיפוש - ' + searchConfig['search'] + '\n'
+		
+		_message += "מס' סידורי - " + str(index) + '\n'
+		
+		if searchConfig['state']:
+			_message += 'פעיל - כן \n'
+		else:
+			_message += 'פעיל - לא \n'
+		
+		_message += 'מידות לחיפוש - ' + str(searchConfig['sizes']) + '\n'
+		
+		_message += 'עיגול מידות - ' + str(searchConfig['roundSizes']) + '\n'
+		
+		_message += 'תדירות - ' + str(searchConfig['intervalString']) + '\n'
+		
+		searchConfigsMessage += _message
+		index += 1
+	
+	bot.send_message(message.chat.id, searchConfigsMessage)
 
 
 @bot.message_handler(commands=['stop'])
 def stop(message):
 	config = getUserConfig(message.chat.id)
-	config['stop'] = True
-	saveUserConfig(config, message.chat.id)
+	pointer = config['pointer']
+	
+	setUserSearchKey(False, 'state', pointer, message.chat.id)
 	bot.send_message(message.chat.id, 'החיפוש הופסק')
 
 
+@bot.message_handler(commands=['stopAll'])
+def stopAll(message):
+	config = getUserConfig(message.chat.id)
+	
+	index = 0
+	for searchConfig in config['searchConfigs']:
+		setUserSearchKey(False, 'state', index, message.chat.id)
+		index += 1
+	bot.send_message(message.chat.id, 'כל החיפושים הופסקו')
+
+
+@bot.message_handler(commands=['delete'])
+def delete(message):
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
+	config['searchConfigs'].pop(pointer)
+	saveUserConfig(config, message.chat.id)
+	bot.send_message(message.chat.id, 'המחיקה בוצע בהצלחה')
+
+
+@bot.message_handler(commands=['deleteAll'])
+def deleteAll(message):
+	config = getUserConfig(message.chat.id)
+	
+	index = 0
+	for searchConfig in config['searchConfigs']:
+		setUserSearchKey(False, 'state', index, message.chat.id)
+		config['searchConfigs'].pop(index)
+		index += 1
+	saveUserConfig(config, message.chat.id)
+	bot.send_message(message.chat.id, 'כל המחיקות בוצעו בהצלחה')
+
+
+@bot.message_handler(commands=['deleteUser'])
+def deleteUser(message):
+	deleteAllUserData(message.chat.id)
+	bot.send_message(message.chat.id, 'המשתמש נמחק בהצלחה')
+
+
+# setSearchText
 def setSearchText(message):
-	userConfig = getUserConfig(message.chat.id)
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	userConfig = getSearchConfig(message.chat.id, pointer)
+	
 	if userConfig:
 		return userConfig["options"]["setSearchText"]
 	else:
 		return False
 
 
-@bot.message_handler(commands=['help'])
-def helpUser(message):
-	bot.send_message(message.chat.id,
-	                 '/start - התחלת חיפוש חדש \n /restart - אתחול של החיפוש הנוכחי \n /stop - הפסק את החיפוש')
-
-
 @bot.message_handler(func=setSearchText)
 def setSearchText(message):
-	setUserSearch(message.text, message.chat.id)
-	triggerOptionsKey(message.chat.id, "setSizes")
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
+	setUserSearchKey(message.text, 'search', pointer, message.chat.id)
+	triggerOptionsKey(message.chat.id, pointer, "setSizes")
 	bot.send_message(message.chat.id, 'איזה מידות תרצה לחפש? \n לדוגמא: 40 41 42 43/ הכל')
 
 
+# setSizes
 def setSizes(message):
-	userConfig = getUserConfig(message.chat.id)
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
+	userConfig = getSearchConfig(message.chat.id, pointer)
 	if userConfig:
 		return userConfig["options"]["setSizes"]
 	else:
@@ -140,21 +239,28 @@ def setSizes(message):
 
 @bot.message_handler(func=setSizes)
 def setSizes(message):
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
 	sizes = message.text.split(" ")
-	setUserSizes(sizes, message.chat.id)
+	setUserSearchKey(sizes, 'sizes', pointer, message.chat.id)
 	
 	if ''.join(sizes).isnumeric():
-		triggerOptionsKey(message.chat.id, "setRoundSizes")
+		triggerOptionsKey(message.chat.id, pointer, "setRoundSizes")
 		bot.send_message(message.chat.id,
-		                 'האם תרצה שנעגל מידות? \n דוגמא: \n מידות: 42 42.5 43.5 44.5 \n מידות מעוגלות: 42 43 44 \n כן/לא')
+		                 'האם תרצה שנעגל מידות? \n דוגמא: \n מידות: 42 42.5 43.5 44.5 44.75 \n מידות מעוגלות: 42 43 44 \n כן/לא')
 	else:
-		triggerOptionsKey(message.chat.id, "setInterval")
+		triggerOptionsKey(message.chat.id, pointer, "setInterval")
 		bot.send_message(message.chat.id,
 		                 'כל כמה זמן תרצה שנחפש?\n לדוג: 1 דקה = 1/ 1 דקה, 5 דקות= 5/ 5 דקות, שעה = 60/ שעה/ 1 שעה, 2 שעות, יום, ימים, שבוע, שבועות...')
 
 
+# setRoundSizes
 def setRoundSizes(message):
-	userConfig = getUserConfig(message.chat.id)
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
+	userConfig = getSearchConfig(message.chat.id, pointer)
 	if userConfig:
 		return userConfig["options"]["setRoundSizes"]
 	else:
@@ -163,21 +269,28 @@ def setRoundSizes(message):
 
 @bot.message_handler(func=setRoundSizes)
 def setRoundSeizes(message):
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
 	if message.text == 'כן':
-		setUserRoundSizes(True, message.chat.id)
+		setUserSearchKey(True, 'roundSizes', pointer, message.chat.id)
 	elif message.text == 'לא':
-		setUserRoundSizes(False, message.chat.id)
+		setUserSearchKey(False, 'roundSizes', pointer, message.chat.id)
 	else:
 		bot.send_message(message.chat.id, 'יש להזין כן/לא')
 		return
 	
-	triggerOptionsKey(message.chat.id, "setInterval")
+	triggerOptionsKey(message.chat.id, pointer, "setInterval")
 	bot.send_message(message.chat.id,
 	                 'כל כמה זמן תרצה שנחפש?\n לדוג: 1 דקה = 1/ 1 דקה, 5 דקות= 5/ 5 דקות, שעה = 60/ שעה/ 1 שעה, 2 שעות, יום, ימים, שבוע, שבועות...')
 
 
+# setInterval
 def setIntervalCommand(message):
-	userConfig = getUserConfig(message.chat.id)
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
+	userConfig = getSearchConfig(message.chat.id, pointer)
 	
 	if userConfig:
 		return userConfig["options"]["setInterval"]
@@ -187,46 +300,24 @@ def setIntervalCommand(message):
 
 @bot.message_handler(func=setIntervalCommand)
 def setIntervalCommand(message):
+	config = getUserConfig(message.chat.id)
+	pointer = config['pointer']
+	
 	intervalNumber = translateInterval(message.text)
 	if type(intervalNumber) is int:
-		setUserInterval(intervalNumber, message.chat.id)
-		triggerOptionsKey(message.chat.id)
+		setUserSearchKey(message.text, 'intervalString', pointer, message.chat.id)
+		setUserSearchKey(intervalNumber, 'intervalNumber', pointer, message.chat.id)
+		triggerOptionsKey(message.chat.id, pointer)
 		
-		config = getUserConfig(message.chat.id)
-		config['stop'] = False
-		saveUserConfig(config, message.chat.id)
+		setUserSearchKey(True, 'state', pointer, message.chat.id)
 		
 		bot.send_message(message.chat.id, 'התחלנו!')
-		startScraper(message.chat.id, intervalNumber)
+		bot.send_message(message.chat.id,
+		                 'שים לב! החיפוש הראשון יכול לקחת מעט זמן, תלוי בכמות התוצאות, לאחר מכן הפרש הזמן בין התוצאות יהיה קבוע!')
+		
+		startScraper(message.chat.id, intervalNumber, pointer)
 	else:
 		bot.send_message(message.chat.id, "יש להזין מספר/ יח' זמן לפי הדוגמאות למעלה")
 
 
-@bot.message_handler(commands=['restart'])
-def restart(message):
-	config = getUserConfig(message.chat.id)
-	intervalNumber = config['interval']
-	searchText = config['search']
-	sizes = config['sizes']
-	
-	config['stop'] = False
-	saveUserConfig(config, message.chat.id)
-	
-	if intervalNumber and searchText and sizes:
-		bot.send_message(message.chat.id, 'התחלנו!')
-		startScraper(message.chat.id, intervalNumber)
-	else:
-		bot.send_message(message.chat.id, 'חסרים פרטים, יש לרשום start ע"מ להתחיל')
-
-
-class BackgroundTasks(threading.Thread):
-	def run(self, *args, **kwargs):
-		while True:
-			output('started listening to bot')
-			bot.infinity_polling(timeout=60, long_polling_timeout=5)
-			time.sleep(1)
-
-
-t = BackgroundTasks()
-t.start()
 startServer()
