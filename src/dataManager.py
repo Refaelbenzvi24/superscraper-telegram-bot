@@ -75,6 +75,9 @@ def saveData(data, userId, pointer):
 			if len(item['sizes']) > 0:
 				item['newData'] = True
 				newData.append(item)
+				
+	for item in newData:
+		savedData.append(item)
 	
 	saveSearchData(savedData, userId, pointer)
 	increaseRequestCounter(1, pointer, userId)
