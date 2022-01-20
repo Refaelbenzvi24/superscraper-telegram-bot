@@ -47,6 +47,9 @@ def saveData(data, userId, pointer):
 			saveSearchConfig(searchConfig, userId, pointer)
 			if searchConfig['exceedCounter'] > MAX_EXCEED_NUMBER:
 				blockSearch(userId, pointer)
+				
+	for _item in savedData:
+		_item['newData'] = False
 	
 	for item in data:
 		duplicated = False
