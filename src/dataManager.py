@@ -47,9 +47,12 @@ def saveData(data, userId, pointer):
 			saveSearchConfig(searchConfig, userId, pointer)
 			if searchConfig['exceedCounter'] > MAX_EXCEED_NUMBER:
 				blockSearch(userId, pointer)
-				
+	
+	# mark all saved data as old
+	_index = 0
 	for _item in savedData:
-		_item['newData'] = False
+		savedData[_index]['newData'] = False
+		_index += 1
 	
 	for item in data:
 		duplicated = False
@@ -78,7 +81,7 @@ def saveData(data, userId, pointer):
 			if len(item['sizes']) > 0:
 				item['newData'] = True
 				newData.append(item)
-				
+	
 	for item in newData:
 		savedData.append(item)
 	
