@@ -53,6 +53,7 @@ def saveData(data, userId, pointer):
 	for _item in savedData:
 		savedData[_index]['newData'] = False
 		_index += 1
+		
 	
 	for item in data:
 		duplicated = False
