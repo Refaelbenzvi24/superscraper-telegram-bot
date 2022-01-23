@@ -53,7 +53,6 @@ def saveData(data, userId, pointer):
 	for _item in savedData:
 		savedData[_index]['newData'] = False
 		_index += 1
-		
 	
 	for item in data:
 		duplicated = False
@@ -107,8 +106,9 @@ def includeUserSizes(sizesToTransform, userId, pointer):
 				map(roundNum, userSizes)
 			
 			for size in userSizes:
-				if size in sizesToTransform:
-					sizes.append(size)
+				for _size in sizesToTransform:
+					if size == _size:
+						sizes.append(size)
 			
 			return sizes
 		else:
@@ -117,11 +117,13 @@ def includeUserSizes(sizesToTransform, userId, pointer):
 		return sizesToTransform
 
 
-def checkNewSizes(l1, l2):
-	l1.sort()
-	l2.sort()
-	
-	return not l1 == l2
+def checkNewSizes(oldSizesList, newSizesList):
+	if newSizesList and len(newSizesList) > 0:
+		oldSizesList.sort()
+		newSizesList.sort()
+		return not oldSizesList == newSizesList
+	else:
+		return False
 
 
 def createUser(userId):
