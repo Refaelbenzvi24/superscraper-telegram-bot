@@ -117,6 +117,7 @@ def includeUserSizes(sizesToTransform, userId, pointer):
 		return sizesToTransform
 
 
+
 def checkNewSizes(oldSizesList, newSizesList):
 	if newSizesList and len(newSizesList) > 0:
 		oldSizesList.sort()
