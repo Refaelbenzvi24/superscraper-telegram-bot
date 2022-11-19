@@ -1,11 +1,17 @@
-.idea
-data
-configs
-venv
-src/config.py
-
 __pycache__
+__pypackages__
 
-src/__pycache__
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir
+
+flower.bak
+flower.dat
+flower.dir
+
+.pdm.toml
 
 .env
+
+.vscode
+.idea

@@ -1,0 +1,130 @@
+x-common-variables: &common-variables
+  DB_HOST: postgres
+  DB_DIALECT: postgresql
+  DB_PORT: 5432
+  DB_USER: root
+  DB_PASSWORD: 1234
+  DB_DATABASE: superscraper
+  BOT_ACCESS_PASSWORD: ${BOT_ACCESS_PASSWORD:-1234}
+  TOKEN: ${TOKEN:-1234}
+  SEARCH_INTERVAL: ${SEARCH_INTERVAL:-5}
+  BROKER_TYPE: amqp
+  BROKER_HOST: message_broker
+  BROKER_PORT: 5672
+  BROKER_USER: guest
+  BROKER_PASSWORD: guest
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 1234
+      PGDATA: /data/postgres
+      POSTGRES_DB: ${DB_DATABASE:-superscraper}
+    volumes:
+      - postgres:/data/postgres
+    networks:
+      - main_network
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    networks:
+      - main_network
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+  message_broker:
+    container_name: rabbitmq_container
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - main_network
+    ports:
+      - 5672:5672
+      - 15672:15672
+    restart: unless-stopped
+
+  celery-flower:
+    container_name: celery_flower_container
+    image: mher/flower:1.2.0
+    environment:
+      CELERY_BROKER_URL: amqp://guest:guest@message_broker:5672
+    ports:
+      - 5555:5555
+    restart: unless-stopped
+    networks:
+      - main_network
+    depends_on:
+      - message_broker
+
+  celery-worker:
+    container_name: celery_worker_container
+    build:
+      context: .
+      dockerfile: df_worker.Dockerfile
+    volumes:
+      - .:/src
+    environment:
+      <<: *common-variables
+    restart: unless-stopped
+    networks:
+      - main_network
+    depends_on:
+      - message_broker
+      - postgres
+
+  celery-beat:
+    container_name: celery_beat_container
+    build:
+      context: .
+      dockerfile: df_beat.Dockerfile
+    environment:
+      <<: *common-variables
+    restart: unless-stopped
+    networks:
+      - main_network
+    depends_on:
+      - message_broker
+      - celery-worker
+
+  bot:
+    container_name: bot_container
+    image: scraper_bot:latest
+    build:
+      context: .
+      dockerfile: df_bot.Dockerfile
+    environment:
+      <<: *common-variables
+    networks:
+      - main_network
+    depends_on:
+      - postgres
+      - message_broker
+
+
+volumes:
+  postgres:
+  pgadmin:
+  celery-flower:
+  celery-beat:
+
+networks:
+  main_network:
+    driver: bridge

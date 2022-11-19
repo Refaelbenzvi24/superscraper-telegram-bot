@@ -1,19 +1,44 @@
-[tool.poetry]
-name = "telegram-selenium-bot"
-version = "0.1.0"
+[project]
+name = ""
+version = ""
 description = ""
-authors = ["Refael <refaelbenzvi24@gmail.com>"]
-
-[tool.poetry.dependencies]
-python = "^3.9"
-pyTelegramBotAPI = "^4.3.1"
-selenium = "^4.1.0"
-
-[tool.poetry.dev-dependencies]
-
-[tool.poetry.scripts]
-start = "python src/main.py"
+authors = [
+    {name = "Refaelbenzvi24", email = "refaelbenzvi24@gmail.com"},
+]
+dependencies = [
+    "python-telegram-bot>=13.14",
+    "uvicorn>=0.19.0",
+    "sqlalchemy>=1.4.43",
+    "psycopg2>=2.9.5",
+    "celery>=5.2.7",
+    "requests>=2.28.1",
+    "pyquery>=1.4.3",
+    "pyTelegramBotAPI>=4.7.1",
+]
+requires-python = ">=3.10"
+license = {text = "MIT"}
+[project.optional-dependencies]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["pdm-pep517>=1.0.0"]
+build-backend = "pdm.pep517.api"
+
+[tool]
+[tool.pdm]
+[tool.pdm.scripts]
+"bot:dev" = "uvicorn src.bot.main:main --reload --log-level info --lifespan on --env-file .env"
+"celery:worker:dev" = "uvicorn src.celery.worker:main --reload --log-level info --lifespan on"
+"celery:beat:dev" = "uvicorn src.celery.beat:main --reload --log-level info --lifespan on"
+"dev" = {composite = [
+    "bot:dev",
+    "celery:worker:dev",
+    "celery:beat:dev",
+]}
+"celery:flower" = "celery flower --persistent=True --port=5555"
+"docker:up" = "docker compose up"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "flower>=1.2.0",
+    "python-dotenv>=0.21.0",
+]
