@@ -6,6 +6,7 @@
 - [Project Content](#Project-Content)
     - [Libraries](#Libraries)
     - [Structure](#Structure)
+    - [Monitoring Tools](#Monitoring-Tools)
 - [Running the service](#Running-the-service)
 
 ## Description
