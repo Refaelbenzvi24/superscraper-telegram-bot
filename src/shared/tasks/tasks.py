@@ -86,13 +86,10 @@ def send_new_products_to_subscribers(search_text: str, products: [Product]):
 	
 	subscribers = search.subscribers
 	
-	subscribers_telegram_ids = [subscriber.telegram_id for subscriber in subscribers]
-	
-	for telegram_id in subscribers_telegram_ids:
-		user = User(telegram_id).get()
-		subscription_in_db = Subscription(user.id, search.id).get()
+	for subscriber in subscribers:
+		subscription_in_db = Subscription(subscriber.id, search.id).get()
 		
-		send_products(telegram_id, [product for product in products if any(size in product.available_sizes for size in subscription_in_db.sizes)])
+		send_products(subscriber.telegram_id, [product for product in products if any(size in product.available_sizes for size in subscription_in_db.sizes)])
 
 
 @celery_app.task(name='start_periodic_scraping')
