@@ -98,6 +98,8 @@ services:
     environment:
       <<: *common-variables
     restart: unless-stopped
+    volumes:
+      - celery_beat:/app
     networks:
       - main_network
     depends_on:
@@ -122,8 +124,8 @@ services:
 volumes:
   postgres:
   pgadmin:
-  celery-flower:
-  celery-beat:
+  celery_flower:
+  celery_beat:
 
 networks:
   main_network:

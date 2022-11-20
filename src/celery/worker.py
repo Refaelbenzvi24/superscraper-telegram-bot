@@ -14,8 +14,7 @@ def main():
 	
 	worker = celery_app.Worker(
 		pool='solo',
-		hostname=f'worker@{len(workers_list) + 1}@{uuid.uuid4()}',
-		queues=['default'],
+		hostname=f'celery@worker@{len(workers_list)}@{uuid.uuid4()}',
 		loglevel='info',
 		task_events=True,
 		include=['src.shared.tasks.tasks']

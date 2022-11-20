@@ -62,6 +62,7 @@ def get_and_send_products(search_text: str, telegram_id: int):
 	search_in_db = search.get()
 	search_products = search_in_db.products
 	
+	print(f'User {user_in_db.id} started searching for {search_text}')
 	if len(search_products) == 0:
 		scrape_and_save_products(search_text)
 	

@@ -27,8 +27,8 @@ build-backend = "pdm.pep517.api"
 [tool.pdm]
 [tool.pdm.scripts]
 "bot:dev" = "uvicorn src.bot.main:main --reload --log-level info --lifespan on --env-file .env"
-"celery:worker:dev" = "uvicorn src.celery.worker:main --reload --log-level info --lifespan on"
-"celery:beat:dev" = "uvicorn src.celery.beat:main --reload --log-level info --lifespan on"
+"celery:worker:dev" = "uvicorn src.celery.worker:main --reload --log-level info --lifespan on --env-file .env"
+"celery:beat:dev" = "uvicorn src.celery.beat:main --reload --log-level info --lifespan on --env-file .env"
 "dev" = {composite = [
     "bot:dev",
     "celery:worker:dev",
