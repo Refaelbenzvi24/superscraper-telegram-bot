@@ -32,7 +32,7 @@ currently, it supports the following:
 
 ### Structure
 
-```shell
+```
 src
 ├── bot # bot module
 |    ├── controllers # bot controllers
