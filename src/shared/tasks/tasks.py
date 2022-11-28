@@ -89,7 +89,9 @@ def send_new_products_to_subscribers(search_text: str, products: [Product]):
 	for subscriber in subscribers:
 		subscription_in_db = Subscription(subscriber.id, search.id).get()
 		
-		send_products(subscriber.telegram_id, [product for product in products if any(size in product.available_sizes for size in subscription_in_db.sizes)])
+		products_to_send = [product for product in products if any(size in product.available_sizes for size in subscription_in_db.sizes)]
+		
+		send_products(subscriber.telegram_id, products_to_send)
 
 
 @celery_app.task(name='start_periodic_scraping')
@@ -130,7 +132,6 @@ def start_periodic_scraping(search_text: str):
 
 @celery_app.task(name='queue_periodic_scraping')
 def queue_periodic_scraping():
-	print("hello")
 	searches = session.query(Search).all()
 	for search in searches:
 		start_periodic_scraping.delay(search.search_text)
